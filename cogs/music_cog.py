@@ -18,7 +18,7 @@ class Music(commands.Cog):
         self.YDL_OPTIONS_PLAYLIST_LENGTH = {'flatplaylist': 'True', 'playlistend': 1}
         self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
                                'options': '-vn'}
-        self.LINK_LIST = ('www.youtube.com', 'youtube.com', 'youtu.be',
+        self.LINK_LIST = ('www.youtube.com', 'youtube.com', 'youtu.be', 'm.youtube.com',
                           'www.soundcloud.com', 'soundcloud.com')
 
     async def search(self, video, ctx):
@@ -29,27 +29,26 @@ class Music(commands.Cog):
             if i in check:
                 link = True
                 break
-        if link is True:
-            if check[-1].split('?')[0] == 'playlist':
-                playlist = True
-        if playlist is True:
+        if link and check[-1].split('?')[0] == 'playlist':
+            playlist = True
+        if playlist:
             asyncio.create_task(self.load_playlist(ctx, video))
-        elif link is True:
+        elif link:
             results = await self.bot.loop.run_in_executor(None, self.get_info, self.YDL_OPTIONS, video)
-            song = {'source': results['formats'][4]['url'], 'title': results['title']}
+            song = {'source': results['url'], 'title': results['title']}
             self.queue.append(song)
             await self.send_queue(ctx, [song])
         else:
             source = await self.bot.loop.run_in_executor(None, self.get_info, self.YDL_OPTIONS, f'ytsearch:{video}')
             results = source['entries'][0]
-            song = {'source': results['formats'][4]['url'], 'title': results['title']}
+            song = {'source': results['url'], 'title': results['title']}
             self.queue.append(song)
             await self.send_queue(ctx, [song])
 
     async def play_music(self, ctx):
-        if len(self.queue) > 0 or self.loop is True:
+        if len(self.queue) > 0 or self.loop:
             self.playing = True
-            if self.loop is False:
+            if not self.loop:
                 self.current_song = self.queue[0]
                 await self.send_title(ctx)
                 self.queue.pop(0)
@@ -75,10 +74,10 @@ class Music(commands.Cog):
                                                           'playlistend': i+1},
                                                          link)
             results = source['entries'][0]
-            song = {'source': results['formats'][4]['url'], 'title': results['title']}
+            song = {'source': results['url'], 'title': results['title']}
             self.queue.append(song)
             songs.append(song)
-            if self.playing is False:
+            if not self.playing:
                 await self.play_music(ctx)
         await self.send_queue(ctx, songs)
 
@@ -87,7 +86,7 @@ class Music(commands.Cog):
 
     async def send_title(self, ctx):
         title = self.queue[0]['title']
-        message = str("```Now playing:\n" + title + '```')
+        message = str(f"```Now playing:\n{title}```")
         await ctx.send(message)
 
     @staticmethod
@@ -101,7 +100,7 @@ class Music(commands.Cog):
             title = i['title']
             message += title + '\n'
         if message != '':
-            output = str('```Queued up:\n' + message + "```")
+            output = str(f"```Queued up:\n{message}```")
             await ctx.send(output)
 
     @staticmethod
@@ -119,12 +118,12 @@ class Music(commands.Cog):
             if self.voice_channel is None:
                 self.voice_channel = await ctx.author.voice.channel.connect()
             await self.search(query, ctx)
-            if self.playing is False:
+            if not self.playing:
                 await self.play_music(ctx)
 
     @commands.command(pass_context=True)
     async def s(self, ctx):
-        if await self.user_is_connected(ctx) and self.voice_channel.is_connected() and self.playing is True:
+        if await self.user_is_connected(ctx) and self.voice_channel.is_connected() and self.playing:
             await ctx.send("```They see me skippin', they hatin'~```")
             self.loop = False
             self.voice_channel.stop()
@@ -132,20 +131,20 @@ class Music(commands.Cog):
     @commands.command(pass_context=True)
     async def pause(self, ctx):
         if await self.user_is_connected(ctx) and self.voice_channel.is_connected()\
-                and self.playing is True and self.voice_channel.is_playing():
+                and self.playing and self.voice_channel.is_playing():
             await ctx.send("```Stop right there, you criminal scum!```")
             self.voice_channel.pause()
 
     @commands.command(pass_context=True)
     async def resume(self, ctx):
         if await self.user_is_connected(ctx) and self.voice_channel.is_connected()\
-                and self.playing is True and self.voice_channel.is_paused():
+                and self.playing and self.voice_channel.is_paused():
             await ctx.send("```Resuming playback.```")
             self.voice_channel.resume()
 
     @commands.command(pass_context=True)
     async def skipall(self, ctx):
-        if await self.user_is_connected(ctx) and self.voice_channel.is_connected() and self.playing is True:
+        if await self.user_is_connected(ctx) and self.voice_channel.is_connected() and self.playing:
             await ctx.send("```They see me skippin', they hatin'~```")
             self.queue = []
             self.loop = False
@@ -170,13 +169,13 @@ class Music(commands.Cog):
         queue = ''
         for i in self.queue:
             queue += f"{str(self.queue.index(i)+1)}) {i['title']}\n"
-        output = str('```' + queue + '```')
+        output = str(f"```{queue}```")
         await ctx.send(output)
 
     @commands.command(pass_context=True)
     async def remove(self, ctx, number):
         title = self.queue[int(number)-1]['title']
-        message = str('```"' + title + '"' + " has been removed from the queue.```")
+        message = str(f"```Removed from queue:\n{title}```")
         self.queue.pop(int(number)-1)
         await ctx.send(message)
         
@@ -184,7 +183,7 @@ class Music(commands.Cog):
     async def loop(self, ctx):
         self.loop = True
         title = self.current_song['title']
-        message = str("```Song " + '"' + title + '" will be looped.```')
+        message = str(f"```Looping:\n{title}```")
         await ctx.send(message)
 
 
